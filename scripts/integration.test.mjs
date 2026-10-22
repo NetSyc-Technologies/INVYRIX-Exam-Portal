@@ -1,0 +1,131 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+const require = createRequire(new URL('../functions/package.json', import.meta.url));
+const { initializeApp } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST) throw new Error('Integration tests require local Firebase emulators.');
+initializeApp({projectId:'demo-invyrix'});
+const db=getFirestore(), auth=getAuth();
+const origin='http://127.0.0.1:5001/demo-invyrix/asia-south1';
+async function login(email) {
+  const password='Test-only-password-239!';
+  const user=await auth.createUser({email,password,emailVerified:true});
+  const response=await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,returnSecureToken:true})});
+  const data=await response.json();
+  assert.ok(data.idToken,JSON.stringify(data));
+  return {uid:user.uid,token:data.idToken};
+}
+async function invoke(name,user,data) {
+  const response=await fetch(`${origin}/${name}`,{method:'POST',headers:{'Content-Type':'application/json',...(user?{Authorization:`Bearer ${user.token}`}:{})},body:JSON.stringify({data})});
+  const result=await response.json();
+  if (result.error) {const error=new Error(result.error.message);error.status=result.error.status;throw error;}
+  return result.result;
+}
+const details={name:'Integration Institute',type:'Institute',address:'100 Test Street',city:'Test City',country:'India',website:'',adminName:'Test Admin',adminEmail:'institute@example.com',adminPhone:'+91 9999999999',termsAccepted:true,termsVersion:'2026-10-21'};
+test('registration, approval, isolation, exams, expiry, pause and renewal work together', {timeout:180000}, async t=>{
+  const root=await login('admin@netsyc.com'), admin=await login(details.adminEmail), stranger=await login('stranger@example.com'), student=await login('student@example.com');
+  const tenantId='integration-institute', expiresAt=new Date(Date.now()+86400000).toISOString();
+  await t.test('registration requires verified identity and current consent',async()=>{
+    await assert.rejects(invoke('submitRegistration',null,details));
+    await assert.rejects(invoke('submitRegistration',admin,{...details,termsAccepted:false}));
+    await invoke('submitRegistration',admin,details);
+    await assert.rejects(invoke('submitRegistration',admin,details));
+  });
+  let approval;
+  await t.test('only super admin approves; IDs and slugs are unique',async()=>{
+    await assert.rejects(invoke('approveInstitute',admin,{registrationId:admin.uid,slug:tenantId,expiresAt}));
+    approval=await invoke('approveInstitute',root,{registrationId:admin.uid,slug:tenantId,expiresAt});
+    assert.match(approval.invyrixId,/^INV-[A-F0-9]{12}$/);
+    const profiles=await invoke('listMyInstitutes',admin,{});assert.equal(profiles[0].slug,tenantId);
+    await assert.rejects(invoke('approveInstitute',root,{...details,slug:tenantId,expiresAt}));
+    await assert.rejects(invoke('updateInstitute',admin,{tenantId,action:'rename',name:'Unauthorized'}));
+    await assert.rejects(invoke('requestRenewal',stranger,{tenantId}));
+  });
+  const tenant=db.doc(`institutes/${tenantId}`);
+  const exam={examName:'Server-graded exam',examPassword:'secret',duration:30,status:'active',settings:{requireRollNo:true,requireName:true,maxAttempts:1,showResults:true},questions:[{id:'q1',type:'mcq',text:'One + one?',options:['2','3'],correctAnswer:0,points:5}],allowedStudents:[{rollNo:'ROLL-1',name:'Student One'}]};
+  await tenant.collection('exams').doc('exam').set(exam);
+  let sessionId;
+  await t.test('entry keeps passwords and keys private; concurrent attempts cannot duplicate',async()=>{
+    const offerings=await invoke('listAvailableExams',student,{tenantId});
+    assert.equal(offerings[0].examPassword,undefined);assert.equal(offerings[0].allowedStudents,undefined);assert.deepEqual(offerings[0].questions,[]);
+    const entry={tenantId,examId:'exam',rollNo:'roll-1',studentName:'Student',password:'secret',deviceInfo:{},isMobile:false};
+    await assert.rejects(invoke('startExam',student,{...entry,password:'wrong'}));
+    const attempts=await Promise.allSettled([invoke('startExam',student,entry),invoke('startExam',student,entry)]);
+    assert.equal(attempts.filter(attempt=>attempt.status==='fulfilled').length,1);
+    sessionId=attempts.find(attempt=>attempt.status==='fulfilled').value.sessionId;
+    await assert.rejects(invoke('getStudentExam',stranger,{tenantId,sessionId}));
+    const before=await invoke('getStudentExam',student,{tenantId,sessionId});assert.deepEqual(before.questions,[]);
+    await invoke('beginExam',student,{tenantId,sessionId});
+    const firstStart=(await tenant.collection('exam_sessions').doc(sessionId).get()).data().startTime.toMillis();
+    await invoke('beginExam',student,{tenantId,sessionId});
+    assert.equal((await tenant.collection('exam_sessions').doc(sessionId).get()).data().startTime.toMillis(),firstStart);
+    const content=await invoke('getStudentExam',student,{tenantId,sessionId});assert.equal(content.questions[0].correctAnswer,undefined);
+    await invoke('saveAnswers',student,{tenantId,sessionId,answers:[{questionId:'q1',answer:0,score:999}]});
+    assert.equal((await tenant.collection('exam_sessions').doc(sessionId).get()).data().answers[0].score,undefined);
+    await assert.rejects(invoke('saveAnswers',stranger,{tenantId,sessionId,answers:[]}));
+    await assert.rejects(invoke('saveAnswers',student,{tenantId,sessionId,answers:[{questionId:'q1',answer:99}]}));
+    await invoke('submitExam',student,{tenantId,sessionId,answers:[{questionId:'q1',answer:0,score:999}],score:999});
+    assert.equal((await tenant.collection('exam_sessions').doc(sessionId).get()).data().score,undefined);
+    assert.equal((await invoke('getStudentResult',student,{tenantId,sessionId})).score,5);
+    await invoke('submitExam',student,{tenantId,sessionId,answers:[]});
+    assert.equal((await invoke('getStudentResult',student,{tenantId,sessionId})).score,5);
+  });
+  await t.test('paused and expired portals block exams but permit a renewal request',async()=>{
+    await invoke('updateInstitute',root,{tenantId,action:'pause',message:'Subscription expired — renew with NetSyc.'});
+    await assert.rejects(invoke('listAvailableExams',student,{tenantId}),/Subscription expired/);
+    await invoke('requestRenewal',admin,{tenantId,note:'Please renew for a month.'});
+    await assert.rejects(invoke('requestRenewal',admin,{tenantId}));
+    await invoke('updateInstitute',root,{tenantId,action:'renew',expiresAt});
+    assert.equal((await db.doc(`renewals/${tenantId}`).get()).data().status,'approved');
+    await tenant.update({expiresAt:Timestamp.fromMillis(Date.now()-1000)});
+    await assert.rejects(invoke('listAvailableExams',student,{tenantId}));
+    await assert.rejects(invoke('updateInstitute',root,{tenantId,action:'resume'}));
+    await invoke('updateInstitute',root,{tenantId,action:'renew',expiresAt});
+    assert.equal((await invoke('listAvailableExams',student,{tenantId})).length,1);
+    await invoke('updateInstitute',root,{tenantId,action:'rename',name:'Renamed Institute'});
+    const profile=(await tenant.get()).data();assert.equal(profile.name,'Renamed Institute');assert.equal(profile.invyrixId,approval.invyrixId);assert.equal(profile.slug,tenantId);
+  });
+  await t.test('hidden scores remain private and faculty changes require an institute admin',async()=>{
+    await invoke('manageFaculty',admin,{tenantId,action:'save',name:'Faculty',email:'faculty@example.com'});
+    await assert.rejects(invoke('manageFaculty',stranger,{tenantId,action:'save',name:'Intruder',email:'other@example.com'}));
+    await tenant.collection('exams').doc('hidden').set({...exam,settings:{...exam.settings,showResults:false}});
+    const created=await invoke('startExam',student,{tenantId,examId:'hidden',rollNo:'ROLL-1',studentName:'Student',password:'secret',deviceInfo:{}});
+    await invoke('beginExam',student,{tenantId,sessionId:created.sessionId});
+    await invoke('submitExam',student,{tenantId,sessionId:created.sessionId,answers:[{questionId:'q1',answer:0}]});
+    assert.equal((await tenant.collection('exam_sessions').doc(created.sessionId).get()).data().score,undefined);
+    assert.equal((await tenant.collection('session_grades').doc(created.sessionId).get()).data().score,5);
+    await invoke('saveGrades',admin,{tenantId,sessionId:created.sessionId,scores:{q1:3}});
+    const publicSession=(await tenant.collection('exam_sessions').doc(created.sessionId).get()).data();
+    assert.equal(publicSession.score,undefined);assert.equal(publicSession.answers[0].score,undefined);
+    assert.equal((await tenant.collection('session_grades').doc(created.sessionId).get()).data().score,3);
+    assert.deepEqual(await invoke('getStudentResult',student,{tenantId,sessionId:created.sessionId}),{});
+    await assert.rejects(invoke('saveGrades',admin,{tenantId,sessionId:created.sessionId,totalScore:999}));
+    await invoke('saveGrades',admin,{tenantId,sessionId:created.sessionId,totalScore:4});
+    await tenant.collection('exams').doc('hidden').update({'settings.showResults':true});
+    assert.equal((await invoke('getStudentResult',student,{tenantId,sessionId:created.sessionId})).score,4);
+    await assert.rejects(invoke('getStudentResult',stranger,{tenantId,sessionId:created.sessionId}));
+    await tenant.collection('exams').doc('hidden').update({'settings.showResults':false});
+    assert.deepEqual(await invoke('getStudentResult',student,{tenantId,sessionId:created.sessionId}),{});
+  });
+  await t.test('phone pairing is private and code rotation disconnects the old phone',async()=>{
+    const phone=await login('phone@example.com'), anotherPhone=await login('phone2@example.com');
+    await tenant.collection('exams').doc('mobile').set({...exam,settings:{...exam.settings,mobileLocking:true}});
+    const created=await invoke('startExam',student,{tenantId,examId:'mobile',rollNo:'ROLL-1',studentName:'Student',password:'secret',deviceInfo:{},isMobile:false});
+    const sessionRef=tenant.collection('exam_sessions').doc(created.sessionId);
+    const originalCode=(await sessionRef.get()).data().mobileLockCode;
+    await assert.rejects(invoke('beginExam',student,{tenantId,sessionId:created.sessionId}));
+    await invoke('pairMobile',phone,{tenantId,code:originalCode});
+    await assert.rejects(invoke('pairMobile',anotherPhone,{tenantId,code:originalCode}));
+    await assert.rejects(invoke('regeneratePairingCode',stranger,{tenantId,sessionId:created.sessionId}));
+    const rotated=await invoke('regeneratePairingCode',student,{tenantId,sessionId:created.sessionId});
+    assert.notEqual(rotated.code,originalCode);
+    await assert.rejects(invoke('pairMobile',phone,{tenantId,code:originalCode}));
+    await invoke('pairMobile',anotherPhone,{tenantId,code:rotated.code});
+    assert.equal((await sessionRef.get()).data().mobileUid,anotherPhone.uid);
+    await sessionRef.update({mobileLockStatus:'locked'});
+    await invoke('beginExam',student,{tenantId,sessionId:created.sessionId});
+    await assert.rejects(invoke('regeneratePairingCode',student,{tenantId,sessionId:created.sessionId}));
+  });
+});

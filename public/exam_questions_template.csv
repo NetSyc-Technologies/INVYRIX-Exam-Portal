@@ -1,0 +1,9 @@
+type,question,option1,option2,option3,option4,correctAnswer,points
+mcq,"What is the capital of France?","London","Berlin","Paris","Madrid",2,1
+mcq,"Which programming language is used for web development?","Python","JavaScript","C++","Java",1,2
+mcq,"What is 2 + 2?","3","4","5","6",1,1
+true_false,"The Earth is flat.",false,,,,false,1
+true_false,"Water boils at 100 degrees Celsius at sea level.",true,,,,true,1
+true_false,"JavaScript is a compiled language.",false,,,,false,1
+short_answer,"What is the chemical symbol for water?",H2O,,,,,2
+short_answer,"What is the largest planet in our solar system?",Jupiter,,,,,2

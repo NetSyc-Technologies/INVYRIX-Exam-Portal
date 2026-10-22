@@ -1,0 +1,79 @@
+{
+  "name": "invyrix",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/build-web.mjs",
+    "test": "node --test scripts/dashboard.test.mjs scripts/platform.test.mjs",
+    "lint": "tsc --noEmit",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test:rules": "node scripts/test-emulators.mjs rules",
+    "test:integration": "node scripts/test-emulators.mjs integration",
+    "desktop:prepare": "node scripts/prepare-desktop.mjs",
+    "desktop:dev": "npm run desktop:prepare && electron desktop",
+    "desktop:build": "node scripts/build-desktop.mjs",
+    "dev:mobile": "vite --config mobile-security/vite.config.ts"
+  },
+  "dependencies": {
+    "firebase": "^12.16.0",
+    "jspdf": "^4.1.0",
+    "jspdf-autotable": "^5.0.7",
+    "qrcode": "^1.5.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^6.0.3",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
+    "firebase-tools": "^14.12.1",
+    "typescript": "^5.2.2",
+    "vite": "^8.1.1"
+  },
+  "description": "INVYRIX by NetSyc Technologies — institutional examination platform",
+  "build": {
+    "appId": "com.netsyc.invyrix",
+    "productName": "INVYRIX",
+    "copyright": "Copyright © 2026 NetSyc Technologies",
+    "directories": {
+      "app": "desktop",
+      "output": "release"
+    },
+    "files": [
+      "package.json",
+      "main.cjs",
+      "preload.cjs",
+      "config.json",
+      "offline.html",
+      "logo.png"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "logo.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "INVYRIX"
+    },
+    "artifactName": "INVYRIX-Setup-${version}.${ext}",
+    "electronDist": "node_modules/electron/dist"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.13.6"
+  }
+}

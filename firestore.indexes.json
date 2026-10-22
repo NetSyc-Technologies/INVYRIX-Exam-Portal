@@ -1,0 +1,5 @@
+{ "indexes": [
+  { "collectionGroup": "exam_sessions", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "examId", "order": "ASCENDING" }, { "fieldPath": "studentRollNo", "order": "ASCENDING" }] },
+  { "collectionGroup": "exam_sessions", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "examId", "order": "ASCENDING" }, { "fieldPath": "ownerUid", "order": "ASCENDING" }] },
+  { "collectionGroup": "exam_sessions", "queryScope": "COLLECTION", "fields": [{ "fieldPath": "ownerUid", "order": "ASCENDING" }, { "fieldPath": "studentRollNo", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }] }
+], "fieldOverrides": [] }

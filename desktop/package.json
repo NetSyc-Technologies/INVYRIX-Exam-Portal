@@ -1,0 +1,8 @@
+{
+  "name": "invyrix-desktop",
+  "version": "2.0.0",
+  "description": "INVYRIX by NetSyc Technologies",
+  "author": "NetSyc Technologies",
+  "main": "main.cjs",
+  "private": true
+}

@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /institutes/{tenantId}/logo/{filename} {
+      function admin() {
+        return request.auth != null && request.auth.token.email_verified == true &&
+          (request.auth.token.email == 'admin@netsyc.com' ||
+            firestore.get(/databases/(default)/documents/institutes/$(tenantId)/admin_users/$(request.auth.token.email)).data.role == 'admin');
+      }
+      allow read: if true;
+      allow write: if admin() && request.resource != null && request.resource.size < 2 * 1024 * 1024 && request.resource.contentType.matches('image/(png|jpeg|webp)');
+    }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

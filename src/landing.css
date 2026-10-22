@@ -1,0 +1,100 @@
+/* The student entry surface is isolated from the exam and admin workspaces. */
+.student-landing {
+  --primary-400: #b0a3ff;
+  --primary-500: #8b73ec;
+  --primary-600: #7960d8;
+  --accent-purple: #9b80ef;
+  --bg-card: #171720;
+  --bg-input: #101017;
+  --border-color: #35333f;
+  --text-secondary: #b6b2c5;
+  --text-muted: #9c97ac;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse 520px 380px at 50% 35%, #7660be19, transparent 85%),
+    radial-gradient(ellipse 440px 220px at 50% 70%, #50417e0b, transparent 90%),
+    #0d0d13;
+  display: flex;
+  flex-direction: column;
+}
+.student-landing .landing-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px 40px;
+}
+.student-landing .landing-entry { width: 100%; max-width: 464px; min-width: 0; scroll-margin-top: 24px; }
+.student-landing .entry-card {
+  position: relative;
+  overflow: hidden;
+  padding: 36px 36px 0;
+  border-radius: 22px;
+  border: 1px solid transparent;
+  background: linear-gradient(145deg, #1d1c27, #15151e 58%) padding-box,
+    linear-gradient(145deg, #6e5d8b88, #34313f 40%, #2b2934 80%) border-box;
+  box-shadow: 0 24px 80px #00000038, 0 2px 5px #00000018;
+}
+.student-landing .entry-card::before { content: ''; position: absolute; top: 0; left: 22%; right: 22%; height: 1px; background: linear-gradient(90deg, transparent, #baa3edaa, transparent); pointer-events: none; }
+.student-landing .entry-card:hover { transform: none; border-color: transparent; box-shadow: 0 24px 80px #00000038, 0 2px 5px #00000018; }
+.student-landing .entry-heading { text-align: left; margin-bottom: 28px; }
+.student-landing .entry-brand { display: flex; align-items: center; gap: 12px; padding-bottom: 28px; margin-bottom: 27px; border-bottom: 1px solid #ffffff0a; }
+.student-landing .entry-brand-mark { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; border: 1px solid #b4a0ef21; border-radius: 13px; background: linear-gradient(145deg, #9c80e91c, #9c80e905); }
+.student-landing .entry-brand strong { display: block; font-size: .82rem; font-weight: 600; letter-spacing: .06em; color: #eeebf7; }
+.student-landing .entry-brand div > span { display: block; color: #aaa4ba; font-size: .66rem; margin-top: 4px; line-height: 1.5; }
+.student-landing .entry-eyebrow { display: block; font-size: .58rem; letter-spacing: .17em; font-weight: 600; color: #b0a0d7; margin-bottom: 9px; }
+.student-landing .entry-heading h1 { font-size: 2rem; font-weight: 600; line-height: 1.2; letter-spacing: -.045em; color: #f3f0fa; margin-bottom: 10px; }
+.student-landing .entry-heading p { color: var(--text-secondary); font-size: .82rem; margin: 0; line-height: 1.65; }
+.student-landing .entry-fields { border: 0; min-width: 0; }
+.student-landing .input { min-width: 0; min-height: 49px; background-color: #111119; border-color: #3a3547; border-radius: 10px; font-size: .84rem; color: #e4e0ef; padding-block: 13px; }
+.student-landing .input:hover:not(:disabled) { border-color: #635672; }
+.student-landing .input:focus { border-color: #a58ae5; box-shadow: 0 0 0 3px #a58ae514; }
+.student-landing .input::placeholder { color: #8f899f; opacity: 1; text-transform: none; }
+.student-landing .input-label { font-size: .73rem; font-weight: 500; margin-bottom: 9px; color: #d7d1e3; }
+.student-landing .input-label.required::after { color: #bba5df; font-size: .7rem; }
+.student-landing .entry-select { position: relative; }
+.student-landing .entry-select > svg { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #a99bc5; pointer-events: none; }
+.student-landing .entry-select .input { padding-left: 44px; padding-right: 38px; cursor: pointer; }
+.student-landing select option { background: #1a1823; color: #e8e2f3; }
+.student-landing .btn { border-radius: 10px; font-weight: 500; }
+.student-landing .btn-primary { background: linear-gradient(110deg, #9075df, #7f65d3); border: 1px solid #b69beb40; box-shadow: 0 3px 12px #8565ca18, inset 0 1px #ffffff14; color: white; font-size: .84rem; min-height: 49px; }
+.student-landing .btn-primary:hover:not(:disabled) { background: linear-gradient(110deg, #a086ed, #8d72de); box-shadow: 0 3px 16px #8565ca25; transform: none; }
+.student-landing .btn-secondary { background: #292432; border-color: #40374d; box-shadow: none; color: #e1d7ee; font-size: .8rem; }
+.student-landing .btn-secondary:hover:not(:disabled) { background: #332b3e; border-color: #6a577c; transform: none; }
+.student-landing .entry-exam-summary { display: flex; flex-wrap: wrap; gap: 8px 14px; color: #ada5bf; font-size: .67rem; margin: -6px 0 22px; }
+.student-landing .entry-exam-summary span { display: flex; align-items: center; gap: 6px; }
+.student-landing .entry-exam-summary svg { color: #b09bd6; }
+.student-landing .entry-password { position: relative; }
+.student-landing .entry-password input { padding-right: 64px; }
+.student-landing .entry-password button { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: #c2aee8; padding: 8px; font-size: .71rem; cursor: pointer; }
+.student-landing .entry-load-error { color: #f1abbc; font-size: .8rem; }
+.student-landing .entry-load-error button { margin-top: 12px; }
+.student-landing .entry-links { display: flex; justify-content: center; align-items: center; gap: 20px; margin: 6px -36px 0; padding: 21px 24px; border-top: 1px solid #ffffff08; background: #0000000d; font-size: .71rem; }
+.student-landing .entry-links a { display: inline-flex; align-items: center; gap: 8px; color: #bfb5d0; }
+.student-landing .entry-links a svg { color: #8b7c9f; transition: transform 150ms ease; }
+.student-landing .entry-links a:hover { color: #e6d8ff; }
+.student-landing .entry-links a:hover svg { transform: translateX(2px); }
+.student-landing .entry-links > span { color: #60556f; }
+.student-landing .entry-help { display: flex; justify-content: center; align-items: center; gap: 7px; color: #a69bb8; font-size: .66rem; text-align: center; margin-top: 22px; }
+.student-landing .entry-help svg { color: #9682b0; flex-shrink: 0; }
+.student-landing .footer { background: transparent; border: 0; padding: 20px 24px; }
+.student-landing .footer-content { gap: 6px; }
+.student-landing .footer-credit, .student-landing .footer-copyright { font-size: .63rem; color: #91869f; }
+.student-landing .footer .dev-name-btn { color: #b0a0cb; font-weight: 500; }
+.portal-skip-link { position: fixed; top: -100px; left: 16px; padding: 10px 18px; border-radius: 8px; background: #ffffff; color: #132737; z-index: 1500; }
+.portal-skip-link:focus { top: 12px; }
+.student-landing :focus-visible { outline: 2px solid #b29ae5; outline-offset: 4px; }
+.admin-portal :focus-visible { outline: 2px solid #78ddc2; outline-offset: 4px; }
+@media (max-width: 480px) {
+  .student-landing .landing-main { padding: 32px 20px; }
+  .student-landing .entry-card { padding: 28px 26px 0; border-radius: 20px; }
+  .student-landing .entry-brand { gap: 10px; padding-bottom: 24px; margin-bottom: 24px; }
+  .student-landing .entry-brand div > span { max-width: 200px; font-size: .62rem; }
+  .student-landing .entry-heading h1 { font-size: 1.85rem; }
+  .student-landing .entry-links { margin-inline: -26px; padding: 20px 16px; gap: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .student-landing *, .admin-portal * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

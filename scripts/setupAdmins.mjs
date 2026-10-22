@@ -1,0 +1,1 @@
+console.log('INVYRIX super admin: admin@netsyc.com. Enable Google sign-in in the Firebase project, then sign in at /admin. No unauthenticated admin seeding is used. Create institute admins through /superadmin.');

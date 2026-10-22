@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signed() { return request.auth != null; }
+    function verified() { return signed() && request.auth.token.get('email_verified', false) == true; }
+    function superAdmin() { return verified() && request.auth.token.email == 'admin@netsyc.com'; }
+    function member(t) { return verified() && exists(/databases/$(database)/documents/institutes/$(t)/admin_users/$(request.auth.token.email)); }
+    function admin(t) { return superAdmin() || (member(t) && get(/databases/$(database)/documents/institutes/$(t)/admin_users/$(request.auth.token.email)).data.role == 'admin'); }
+    function staff(t) { return superAdmin() || member(t); }
+    function active(t) { return get(/databases/$(database)/documents/institutes/$(t)).data.status == 'active' && get(/databases/$(database)/documents/institutes/$(t)).data.expiresAt > request.time; }
+    function ownSession(t, id) { return signed() && get(/databases/$(database)/documents/institutes/$(t)/exam_sessions/$(id)).data.ownerUid == request.auth.uid; }
+
+    match /institutes/{t} {
+      allow get: if true;
+      allow list: if superAdmin();
+      allow update: if admin(t) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['logoUrl', 'updatedAt']) && request.resource.data.logoUrl is string && request.resource.data.logoUrl.size() < 200000;
+
+      match /admin_users/{address} {
+        allow read: if admin(t) || (verified() && request.auth.token.email == address);
+        allow create, update, delete: if superAdmin() || (admin(t) && request.resource.data.role == 'faculty');
+      }
+      match /exams/{id} {
+        allow read: if signed() && (active(t) || superAdmin());
+        allow create, delete: if admin(t) && (active(t) || superAdmin());
+        allow update: if (active(t) || superAdmin()) && (admin(t) || (member(t) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])));
+      }
+      match /exam_sessions/{id} {
+        function own() { return signed() && resource.data.ownerUid == request.auth.uid; }
+        function mobile() { return signed() && resource.data.get('mobileUid', '') == request.auth.uid; }
+        function telemetry() { return request.resource.data.warningCount >= resource.data.warningCount && request.resource.data.tabSwitchCount >= resource.data.tabSwitchCount && request.resource.data.cheatingEvents.size() >= resource.data.cheatingEvents.size(); }
+        allow read: if signed() && (active(t) || superAdmin()) && (staff(t) || own() || mobile());
+        allow create: if signed() && active(t) && request.resource.data.ownerUid == request.auth.uid && request.resource.data.status == 'started';
+        allow delete: if admin(t) && (active(t) || superAdmin());
+        allow update: if (active(t) || superAdmin()) && (
+          (own() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers', 'cheatingEvents', 'warningCount', 'tabSwitchCount', 'startLocation', 'endLocation', 'status', 'endTime', 'terminationReason', 'mobileLockStatus', 'beganAt', 'startTime', 'deadline', 'mobileLockCode', 'mobileUid', 'lastActiveHeartbeat', 'mobileLockViolationsCount', 'mobileLockViolatedAt', 'deviceInfo']))
+          || (assigned(t, resource.data.examId) && resource.data.status == 'started' && request.resource.data.status == 'terminated')
+          || (mobile() && telemetry())
+        );
+      }
+      match /blocked_students/{id} { allow read, write: if admin(t) && (active(t) || superAdmin()); }
+      match /session_grades/{id} { allow read: if staff(t) || ownSession(t, id); allow write: if staff(t) || ownSession(t, id); }
+      match /attempts/{id} { allow read, write: if signed() && active(t); }
+      match /{privateCollection}/{id} { allow read, write: if false; }
+    }
+
+    function assigned(t, examId) { return admin(t) || (member(t) && request.auth.token.email in get(/databases/$(database)/documents/institutes/$(t)/exams/$(examId)).data.get('assignedFaculty', [])); }
+    match /invyrix_ids/{id} { allow get: if true; allow list, write: if false; }
+    match /registrations/{id} {
+      allow get: if superAdmin() || (signed() && request.auth.uid == id);
+      allow list: if superAdmin();
+      allow create: if superAdmin() || (verified() && request.auth.uid == id && request.resource.data.applicantUid == request.auth.uid && request.resource.data.adminEmail == request.auth.token.email && request.resource.data.status == 'pending');
+      allow update: if superAdmin() || (verified() && request.auth.uid == id && resource.data.status == 'rejected' && request.resource.data.applicantUid == request.auth.uid && request.resource.data.adminEmail == request.auth.token.email && request.resource.data.status == 'pending');
+    }
+    match /institute_contacts/{id} {
+      allow read: if superAdmin() || (verified() && resource.data.adminEmail == request.auth.token.email);
+      allow write: if superAdmin();
+    }
+    match /renewals/{id} {
+      allow get: if superAdmin() || (verified() && resource.data.adminEmail == request.auth.token.email);
+      allow list: if superAdmin();
+      allow create, update: if superAdmin() || (verified() && request.resource.data.adminEmail == request.auth.token.email);
+    }
+    match /directory/{id} { allow read: if superAdmin() || (verified() && request.auth.token.email == id); allow write: if superAdmin(); }
+    match /audit_log/{id} { allow read: if superAdmin(); allow create: if superAdmin(); }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
