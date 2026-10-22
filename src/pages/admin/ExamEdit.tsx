@@ -29,8 +29,7 @@ export default function ExamEdit() {
         maxWarnings: 2,
         deviceRestriction: 'both',
         lateEntryPolicy: 'allow',
-        cameraAntiCheat: false,
-        mobileLocking: false
+        cameraAntiCheat: false
     });
     const [questions, setQuestions] = useState<Question[]>([]);
 
@@ -79,7 +78,6 @@ export default function ExamEdit() {
                         deviceRestriction: examSettings.deviceRestriction ?? 'both',
                         lateEntryPolicy: examSettings.lateEntryPolicy ?? 'allow',
                         cameraAntiCheat: examSettings.cameraAntiCheat ?? false,
-                        mobileLocking: examSettings.mobileLocking ?? false,
                         geofence: examSettings.geofence || undefined
                     });
 
@@ -554,76 +552,6 @@ short_answer,"What is the chemical symbol for water?",H2O,,,,,2`;
                             />
                             <span style={{ fontWeight: 600, color: 'var(--primary-500)' }}>📷 Enable Camera Anti-Cheat (Surveillance, Gaze & movement tracking)</span>
                         </label>
-
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', cursor: 'pointer' }}>
-                            <input
-                                type="checkbox"
-                                checked={settings.mobileLocking ?? false}
-                                onChange={(e) => setSettings(prev => ({ ...prev, mobileLocking: e.target.checked, mobileLockReengageLimit: e.target.checked ? (prev.mobileLockReengageLimit || 30) : undefined }))}
-                            />
-                            <span style={{ fontWeight: 600, color: 'var(--primary-500)' }}>📱 Enable Mobile Phone Security Locking (Requires secondary phone lock)</span>
-                        </label>
-
-                        {settings.mobileLocking && (
-                            <div style={{ marginLeft: 'var(--space-lg)', marginTop: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
-                                <div className="input-group" style={{ marginBottom: 'var(--space-md)' }}>
-                                    <label className="input-label" style={{ fontWeight: 600 }}>Mobile Lock Re-engage Limit (seconds)</label>
-                                    <input
-                                        type="number"
-                                        className="input"
-                                        min={10}
-                                        max={600}
-                                        value={settings.mobileLockReengageLimit ?? 30}
-                                        onChange={(e) => setSettings(prev => ({ ...prev, mobileLockReengageLimit: parseInt(e.target.value) || 30 }))}
-                                    />
-                                    <small className="text-muted" style={{ display: 'block', marginTop: '4px' }}>Time in seconds the student has to relock their mobile phone before the exam is terminated (Default: 30s)</small>
-                                </div>
-
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', cursor: 'pointer', marginTop: 'var(--space-md)' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={settings.mobileCameraAntiCheat ?? false}
-                                        onChange={(e) => setSettings(prev => ({ 
-                                            ...prev, 
-                                            mobileCameraAntiCheat: e.target.checked,
-                                            mobileCameraSource: e.target.checked ? (prev.mobileCameraSource || 'front') : undefined
-                                        }))}
-                                    />
-                                    <span style={{ fontWeight: 600, color: 'var(--primary-400)' }}>📷 Enable Secondary Mobile Camera Anti-Cheat (Face Tracking on Phone)</span>
-                                </label>
-
-                                {settings.mobileCameraAntiCheat && (
-                                    <div style={{ marginLeft: 'var(--space-lg)', marginTop: 'var(--space-sm)' }}>
-                                        <div className="input-group" style={{ marginBottom: 'var(--space-md)' }}>
-                                            <label className="input-label">Select Mobile Camera Lens</label>
-                                            <select
-                                                className="input"
-                                                value={settings.mobileCameraSource ?? 'front'}
-                                                onChange={(e) => setSettings(prev => ({ ...prev, mobileCameraSource: e.target.value as 'front' | 'rear' }))}
-                                                style={{ width: '100%' }}
-                                            >
-                                                <option value="front">Front Camera (Selfie/Face Lens)</option>
-                                                <option value="rear">Rear Camera (Back Lens)</option>
-                                            </select>
-                                            <small className="text-muted" style={{ display: 'block', marginTop: '4px' }}>The camera to be activated on the secondary mobile device for face monitoring.</small>
-                                        </div>
-
-                                        <div className="input-group">
-                                            <label className="input-label" style={{ fontWeight: 600 }}>Face Positioning Grace Period (seconds)</label>
-                                            <input
-                                                type="number"
-                                                className="input"
-                                                min={5}
-                                                max={60}
-                                                value={settings.mobileLockGracePeriod ?? 10}
-                                                onChange={(e) => setSettings(prev => ({ ...prev, mobileLockGracePeriod: parseInt(e.target.value) || 10 }))}
-                                            />
-                                            <small className="text-muted" style={{ display: 'block', marginTop: '4px' }}>Time in seconds the student has to position their phone and align their face after re-engaging lock (Default: 10s)</small>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
 
                         <div className="divider" style={{ margin: 'var(--space-md) 0', borderTop: '1px solid var(--border-color)' }}></div>
                         <h4 style={{ fontSize: '0.875rem', marginBottom: 'var(--space-sm)', color: 'var(--text-secondary)' }}>Student Requirements</h4>

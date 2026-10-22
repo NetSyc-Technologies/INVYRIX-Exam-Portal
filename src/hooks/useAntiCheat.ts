@@ -60,8 +60,7 @@ export function useAntiCheat({ sessionId, maxWarnings = 2, initialWarningCount =
                 await updateDoc(doc(db, 'exam_sessions', sessionId), {
                     status: 'terminated',
                     endTime: new Date(),
-                    terminationReason: type.replace(/_/g, ' '),
-                    mobileLockStatus: 'unlocked'
+                    terminationReason: type.replace(/_/g, ' ')
                 });
             } catch (err) {
                 console.error('Error updating session:', err);

@@ -14,8 +14,7 @@
     "test:integration": "node scripts/test-emulators.mjs integration",
     "desktop:prepare": "node scripts/prepare-desktop.mjs",
     "desktop:dev": "npm run desktop:prepare && electron desktop",
-    "desktop:build": "node scripts/build-desktop.mjs",
-    "dev:mobile": "vite --config mobile-security/vite.config.ts"
+    "desktop:build": "node scripts/build-desktop.mjs"
   },
   "dependencies": {
     "firebase": "^12.16.0",

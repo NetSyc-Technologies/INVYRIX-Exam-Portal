@@ -35,11 +35,6 @@ export interface ExamSettings {
     deviceRestriction?: 'mobile_only' | 'desktop_only' | 'both';
     lateEntryPolicy?: 'allow' | 'disallow';
     cameraAntiCheat?: boolean;
-    mobileLocking?: boolean;
-    mobileLockReengageLimit?: number;
-    mobileCameraAntiCheat?: boolean;
-    mobileCameraSource?: 'front' | 'rear';
-    mobileLockGracePeriod?: number;
 }
 
 export type GeofenceConfig = 
@@ -81,11 +76,6 @@ export interface ExamSession {
     endLocation?: GeoLocation;
     createdAt?: any;
     terminationReason?: string;
-    mobileLockCode?: string;
-    mobileLockStatus?: 'pending' | 'locked' | 'unlocked' | 'violated';
-    mobileLockViolationsCount?: number;
-    mobileLockViolatedAt?: any;
-    lastActiveHeartbeat?: any;
 }
 
 export interface Answer {
@@ -96,7 +86,7 @@ export interface Answer {
 }
 
 export interface CheatingEvent {
-    type: 'tab_switch' | 'keyboard_shortcut' | 'context_menu' | 'devtools' | 'fullscreen_exit' | 'copy_paste' | 'split_screen' | 'mobile_lock_violation' | 'mobile_camera_violation';
+    type: 'tab_switch' | 'keyboard_shortcut' | 'context_menu' | 'devtools' | 'fullscreen_exit' | 'copy_paste' | 'split_screen';
     timestamp: Date;
     details: string;
     severity: 'low' | 'medium' | 'high';

@@ -1,10 +1,9 @@
-import { tenantId } from '../../services/tenant';
 import { studentExam, api } from '../../services/platform';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Footer from '../../components/Footer';
 import Logo from '../../components/Logo';
-import { updateDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { updateDoc, getDoc } from 'firebase/firestore';
 import { doc } from '../../services/tenant';
 import { db } from '../../services/firebase';
 import { getGeolocation } from '../../utils/deviceUtils';
@@ -66,31 +65,13 @@ export default function PreExamCheck() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const activeStreamRef = useRef<MediaStream | null>(null);
 
-    // Mobile Locking State
-    const [mobileLockCode, setMobileLockCode] = useState<string | null>(null);
-    const [mobileLockStatus, setMobileLockStatus] = useState<'pending' | 'locked' | 'unlocked' | null>(null);
-    const [isMobileLockRequired, setIsMobileLockRequired] = useState(false);
-
-    // Real-time listener for mobile locking updates
-    useEffect(() => {
-        if (!sessionId) return;
-        const unsubscribe = onSnapshot(doc(db, 'exam_sessions', sessionId), (snap) => {
-            if (snap.exists()) {
-                const data = snap.data();
-                setMobileLockCode(data.mobileLockCode || null);
-                setMobileLockStatus(data.mobileLockStatus || null);
-            }
-        });
-        return () => unsubscribe();
-    }, [sessionId]);
-
     useEffect(() => {
         if (!sessionId) {
             navigate('/');
             return;
         }
         runSystemChecks();
-    }, [sessionId, navigate, mobileLockStatus]);
+    }, [sessionId, navigate]);
 
     // Webcam cleanup on unmount
     useEffect(() => {
@@ -106,23 +87,6 @@ export default function PreExamCheck() {
             terminalEndRef.current.scrollTop = terminalEndRef.current.scrollHeight;
         }
     }, [terminalOutput]);
-
-    const handleRegenerateCode = async () => {
-        if (!sessionId) return;
-        try {
-            const result = await api<{ code: string }>('regeneratePairingCode', { sessionId });
-            setMobileLockCode(result.code);
-            setMobileLockStatus('pending');
-        } catch (err) {
-            console.error('Failed to regenerate lock code:', err);
-        }
-    };
-
-    const getMobileLockUrl = () => {
-        const local = ['localhost','127.0.0.1'].includes(window.location.hostname);
-        const base = local ? window.location.protocol + '//' + window.location.hostname + ':5174/mobile/' : (import.meta.env.VITE_MOBILE_LOCK_URL || window.location.origin + '/mobile/');
-        return base + '?institute=' + encodeURIComponent(tenantId || '');
-    };
 
     const runSystemChecks = async () => {
         // Initializing logs
@@ -320,35 +284,6 @@ export default function PreExamCheck() {
                     ...prev,
                     `[FAIL] Camera surveillance: ${err.message || 'Access denied'}. Camera permission is mandatory.`,
                     `[SYS] Please ensure your webcam is connected and permission is granted.`
-                ]);
-            }
-        }
-
-        // Mobile Security Lock Check (Mandatory for desktop candidates when enabled)
-        const mobileLockEnabled = examData?.settings?.mobileLocking ?? false;
-        const requireMobileLock = mobileLockEnabled && !isMobile;
-        setIsMobileLockRequired(requireMobileLock);
-
-        if (requireMobileLock) {
-            await delay(400);
-            setTerminalOutput(prev => [
-                ...prev,
-                '[SYS] Mobile security lock: Initializing phone lock verification...',
-                `[SYS] Handshake request: Awaiting secure passcode entry (Status: ${mobileLockStatus || 'pending'}).`
-            ]);
-
-            if (mobileLockStatus === 'locked') {
-                setTerminalOutput(prev => [
-                    ...prev,
-                    '[ OK ] Mobile security lock: Secondary mobile device locked successfully.',
-                    '[ OK ] Mobile security lock: Device activity listener active.'
-                ]);
-            } else {
-                success = false;
-                setTerminalOutput(prev => [
-                    ...prev,
-                    '[FAIL] Mobile security lock: Awaiting mobile phone lock confirmation.',
-                    '[WARN] Enter code on your phone: Visit the mobile locking URL to confirm identity.'
                 ]);
             }
         }
@@ -905,68 +840,6 @@ export default function PreExamCheck() {
                                                 <div style={{ position: 'absolute', color: 'rgba(0, 255, 102, 0.7)', fontSize: '0.7rem', fontFamily: 'monospace', bottom: 10, left: 10 }}>FACE_LOCATED: YES</div>
                                                 <div style={{ position: 'absolute', color: 'rgba(0, 255, 102, 0.7)', fontSize: '0.7rem', fontFamily: 'monospace', bottom: 10, right: 10 }}>EYE_TRACKING: LOCKED</div>
                                             </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {isMobileLockRequired && (
-                                    <div style={{
-                                        marginTop: 'var(--space-md)',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        backgroundColor: '#0a0e14',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: 'var(--radius-lg)',
-                                        padding: 'var(--space-md)',
-                                        boxShadow: 'var(--shadow-lg)'
-                                    }}>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-500)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ 
-                                                width: 8, 
-                                                height: 8, 
-                                                borderRadius: '50%', 
-                                                backgroundColor: mobileLockStatus === 'locked' ? '#3fb950' : '#ef4444', 
-                                                display: 'inline-block',
-                                                animation: mobileLockStatus === 'locked' ? 'none' : 'pulse 1.5s infinite'
-                                            }}></span>
-                                            <span>📱 Secondary Mobile Security Lock</span>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-md)', margin: 'var(--space-sm) 0' }}>
-                                            {mobileLockStatus === 'locked' ? (
-                                                <div style={{ textAlign: 'center', color: '#3fb950', padding: '12px' }}>
-                                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ margin: '0 auto 8px auto', display: 'block' }}>
-                                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                                                    </svg>
-                                                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Device Locked Successfully</div>
-                                                    <small style={{ color: 'var(--text-secondary)' }}>Your phone is locked for the duration of the examination.</small>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div style={{ textAlign: 'center', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
-                                                        Open this link on your mobile phone:<br />
-                                                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--primary-400)', fontSize: '0.85rem', wordBreak: 'break-all' }}>
-                                                            {getMobileLockUrl()}&code={mobileLockCode || ''}
-                                                        </span>
-                                                    </div>
-                                                    
-                                                    {/* Secret Code display box */}
-                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(99, 102, 241, 0.08)', border: '1px dashed var(--primary-500)', padding: '10px 24px', borderRadius: '8px' }}>
-                                                        <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)' }}>Secret Passcode</span>
-                                                        <span style={{ fontSize: '1.75rem', fontWeight: 750, color: '#fff', letterSpacing: '4px', fontFamily: 'monospace', margin: '4px 0' }}>
-                                                             {mobileLockCode || '------'}
-                                                        </span>
-                                                    </div>
-
-                                                    <button 
-                                                        className="btn btn-outline btn-sm"
-                                                        onClick={handleRegenerateCode}
-                                                        style={{ fontSize: '0.75rem', padding: '4px 12px' }}
-                                                    >
-                                                        🔄 Regenerate Code
-                                                    </button>
-                                                </>
-                                            )}
                                         </div>
                                     </div>
                                 )}
